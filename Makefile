@@ -1,26 +1,50 @@
 
 FONT_NAME = Maripose
-FONT_NAME_LOWCASE = $(shell python -c "print('$(FONT_NAME)'.lower())")
 
+
+# Define some basic commands
 PYTHON = python
-MKDIR = mkdir
+MKDIR = mkdir -p
 RM = rm -fr
 COPY = cp
 
-all: $(FONT_NAME_LOWCASE)-temp-2.sfd otf
+# Working directories
+BUILD_DIR   = _build
+TMP_DIR     = _build/tmp
 
-otf: $(FONT_NAME_LOWCASE)-temp-2.sfd scripts/build_otf.py _build
-	$(RM) _build/otf
-	$(MKDIR) _build/otf
-	$(PYTHON) scripts/build_otf.py $(FONT_NAME_LOWCASE)-temp-2.sfd _build/otf/$(FONT_NAME_LOWCASE)-temp-4.otf
-	$(COPY) $(FONT_NAME_LOWCASE)-temp-2-metadata.json _build/otf/$(FONT_NAME_LOWCASE)-metadata.json
-	$(COPY) _build/otf/$(FONT_NAME_LOWCASE)-temp-4.otf font/$(FONT_NAME_LOWCASE).otf
-	$(COPY) _build/otf/$(FONT_NAME_LOWCASE)-metadata.json font/
 
-$(FONT_NAME_LOWCASE)-temp-2.sfd: scripts/build_font.py $(FONT_NAME).sfdir
-	$(PYTHON) scripts/build_font.py $(FONT_NAME).sfdir $(FONT_NAME_LOWCASE)-temp-2.sfd
+FONT_NAME_LOWCASE = $(shell $(PYTHON) -c "print('$(FONT_NAME)'.lower())")
+
+
+all: test_pillow $(TMP_DIR)/$(FONT_NAME_LOWCASE)-12.sfd
+
+otf: $(TMP_DIR)/$(FONT_NAME_LOWCASE)-12.sfd scripts/build_otf.py $(BUILD_DIR) $(TMP_DIR)
+	$(RM)     $(BUILD_DIR)/otf
+	$(MKDIR)  $(BUILD_DIR)/otf
+	$(PYTHON) scripts/build_otf.py $(TMP_DIR)/$(FONT_NAME_LOWCASE)-12.sfd $(BUILD_DIR)/otf/$(FONT_NAME_LOWCASE)-14.otf
+	$(COPY)   $(TMP_DIR)/samuel-12-metadata.json _build/otf/$(FONT_NAME_LOWCASE)-metadata.json
+	$(COPY)   $(BUILD_DIR)/otf/$(FONT_NAME_LOWCASE)-14.otf font/$(FONT_NAME_LOWCASE).otf
+	$(COPY)   $(BUILD_DIR)/otf/$(FONT_NAME_LOWCASE)-metadata.json font/
+
+$(TMP_DIR)/$(FONT_NAME_LOWCASE)-12.sfd: _check_requirements $(TMP_DIR) src/build_font.py $(FONT_NAME_LOWCASE)-11.sfdir
+	$(PYTHON) scripts/build_font.py $(FONT_NAME_LOWCASE)-11.sfdir $(TMP_DIR)/$(FONT_NAME_LOWCASE)-12.sfd
+
+test_verovio: scripts/test_verovio.py $(TMP_DIR)/$(FONT_NAME_LOWCASE)-12.sfd
+	$(PYTHON) scripts/test_verovio.py $(TMP_DIR)/$(FONT_NAME_LOWCASE)-12.sfd
+
+test_pillow: otf
+	$(PYTHON) scripts/test_pillow.py _build/otf/$(FONT_NAME_LOWCASE)-14.otf
 
 _build:
 	$(MKDIR) _build
 
-.PHONY: otf
+_build/tmp: _build
+	$(MKDIR) _build/tmp
+
+_check_requirements: _build
+	$(PYTHON) scripts/check_requirements.py > _build/RequirementsCheck.txt
+
+clean:
+	$(RM) _build/tmp
+
+.PHONY: test_verovio test_pillow otf clean _check_requirements
